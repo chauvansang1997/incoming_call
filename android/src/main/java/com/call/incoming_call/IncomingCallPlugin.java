@@ -35,8 +35,24 @@ public class IncomingCallPlugin implements FlutterPlugin, MethodCallHandler, Plu
     /// This local reference serves to register the plugin with the Flutter Engine and unregister it
     /// when the Flutter Engine is detached from the Activity
     private MethodChannel channel;
-    private Context context;
     private Activity activity;
+
+
+    public IncomingCallPlugin() {
+
+    }
+
+    private IncomingCallPlugin(PluginRegistry.Registrar registrar) {
+        activity = registrar.activity();
+        channel = new MethodChannel(registrar.messenger(), "incoming_call");
+        channel.setMethodCallHandler(this);
+        if (PackageManager.PERMISSION_GRANTED == activity.checkSelfPermission(Manifest.permission.READ_CALL_LOG)) {
+            registerCallListener();
+        } else {
+            String[] perm = {Manifest.permission.READ_CALL_LOG};
+            activity.requestPermissions(perm, 0);
+        }
+    }
 
     private Result result;
     private PhoneStateListener mPhoneListener = new PhoneStateListener() {
@@ -74,10 +90,6 @@ public class IncomingCallPlugin implements FlutterPlugin, MethodCallHandler, Plu
         }
     };
 
-    public IncomingCallPlugin() {
-
-    }
-
     // This static function is optional and equivalent to onAttachedToEngine. It supports the old
     // pre-Flutter-1.12 Android projects. You are encouraged to continue supporting
     // plugin registration via this function while apps migrate to use the new Android APIs
@@ -89,6 +101,9 @@ public class IncomingCallPlugin implements FlutterPlugin, MethodCallHandler, Plu
     // in the same class.
     public static void registerWith(PluginRegistry.Registrar registrar) {
 
+        final IncomingCallPlugin callLogPlugin = new IncomingCallPlugin(registrar);
+
+        registrar.addRequestPermissionsResultListener(callLogPlugin);
 
     }
 
@@ -96,7 +111,6 @@ public class IncomingCallPlugin implements FlutterPlugin, MethodCallHandler, Plu
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
         channel = new MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), "incoming_call");
         channel.setMethodCallHandler(this);
-        context = flutterPluginBinding.getApplicationContext();
 
     }
 
